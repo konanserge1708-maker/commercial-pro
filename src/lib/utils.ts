@@ -22,9 +22,8 @@ export function generateId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-export function generatePromoCode(name: string): string {
-  const prefix =
-    name.replace(/[^a-zA-Z]/g, "").slice(0, 3).toUpperCase() || "AGT";
-  const suffix = Math.random().toString(36).slice(2, 7).toUpperCase();
-  return `${prefix}${suffix}`;
+export function generatePromoCode(): string {
+  // Code numérique à 4 chiffres : simple à taper sur un clavier de téléphone,
+  // simple à dire à l'oral, aucune confusion possible entre lettres et chiffres.
+  return Math.floor(1000 + Math.random() * 9000).toString();
 }

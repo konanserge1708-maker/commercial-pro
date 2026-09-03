@@ -84,7 +84,7 @@ export async function createUser(user: User): Promise<User> {
 
   let promoCode = user.promoCode;
   if (user.role === "agent" && !promoCode) {
-    promoCode = await generateUniquePromoCode(user.name);
+    promoCode = await generateUniquePromoCode();
   }
 
   await pool.execute(
@@ -106,13 +106,15 @@ export async function createUser(user: User): Promise<User> {
   return { ...user, promoCode: promoCode ?? null };
 }
 
-async function generateUniquePromoCode(name: string): Promise<string> {
-  for (let i = 0; i < 10; i++) {
-    const code = generatePromoCode(name);
+async function generateUniquePromoCode(): Promise<string> {
+  for (let i = 0; i < 20; i++) {
+    const code = generatePromoCode();
     const existing = await getUserByPromoCode(code);
     if (!existing) return code;
   }
-  return generatePromoCode(name + Date.now());
+  // Filet de sécurité si jamais les 20 tirages aléatoires collisionnent tous
+  // (très improbable avec peu d'agents, mais on ne bloque jamais la création).
+  return `${generatePromoCode()}${Math.floor(Math.random() * 10)}`;
 }
 
 export async function updateUser(id: string, updates: Partial<User>): Promise<User> {
