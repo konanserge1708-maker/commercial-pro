@@ -4,49 +4,33 @@ import { useEffect, useState } from "react";
 import PinInput from "@/components/PinInput";
 import { formatPhone } from "@/lib/utils";
 import { Loader2, X } from "lucide-react";
-import type { AgentRow } from "./AgentsTable";
+import type { AdminRow } from "./AdminsTable";
 
-interface AgentModalProps {
+interface AdminModalProps {
   open: boolean;
   mode: "create" | "edit";
-  agent?: AgentRow | null;
+  admin?: AdminRow | null;
   loading: boolean;
   error: string;
   onClose: () => void;
-  onCreate: (data: {
-    name: string;
-    phone: string;
-    pin: string;
-    monthlyTarget: string;
-    initialBalance: string;
-  }) => void;
-  onUpdate: (data: {
-    monthlyTarget: string;
-    monthlyAchieved: string;
-    balance: string;
-    pin: string;
-  }) => void;
+  onCreate: (data: { name: string; phone: string; pin: string }) => void;
+  onUpdate: (data: { pin: string }) => void;
 }
 
-export default function AgentModal({
+export default function AdminModal({
   open,
   mode,
-  agent,
+  admin,
   loading,
   error,
   onClose,
   onCreate,
   onUpdate,
-}: AgentModalProps) {
+}: AdminModalProps) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [pin, setPin] = useState("");
-  const [monthlyTarget, setMonthlyTarget] = useState("");
-  const [initialBalance, setInitialBalance] = useState("");
-  const [editTarget, setEditTarget] = useState("");
-  const [editAchieved, setEditAchieved] = useState("");
-  const [editBalance, setEditBalance] = useState("");
-  const [editPin, setEditPin] = useState("");
+  const [newPin, setNewPin] = useState("");
 
   useEffect(() => {
     if (open) document.body.style.overflow = "hidden";
@@ -61,16 +45,11 @@ export default function AgentModal({
       setName("");
       setPhone("");
       setPin("");
-      setMonthlyTarget("");
-      setInitialBalance("");
     }
-    if (open && mode === "edit" && agent) {
-      setEditTarget(String(agent.monthlyTarget));
-      setEditAchieved(String(agent.monthlyAchieved));
-      setEditBalance(String(agent.balance));
-      setEditPin("");
+    if (open && mode === "edit") {
+      setNewPin("");
     }
-  }, [open, mode, agent]);
+  }, [open, mode]);
 
   if (!open) return null;
 
@@ -85,7 +64,7 @@ export default function AgentModal({
       <div className="relative z-10 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-white p-6 shadow-2xl sm:rounded-3xl">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-lg font-bold text-gray-900">
-            {mode === "create" ? "Nouvel agent" : `Modifier — ${agent?.name}`}
+            {mode === "create" ? "Nouvel administrateur" : `Modifier le PIN — ${admin?.name}`}
           </h2>
           <button
             onClick={onClose}
@@ -99,13 +78,7 @@ export default function AgentModal({
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              onCreate({
-                name,
-                phone: phone.replace(/\D/g, ""),
-                pin,
-                monthlyTarget,
-                initialBalance,
-              });
+              onCreate({ name, phone: phone.replace(/\D/g, ""), pin });
             }}
             className="space-y-4"
           >
@@ -128,52 +101,30 @@ export default function AgentModal({
               </label>
               <PinInput value={pin} onChange={setPin} disabled={loading} />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <Field
-                label="Objectif mensuel"
-                value={monthlyTarget}
-                onChange={setMonthlyTarget}
-                type="number"
-                placeholder="500000"
-              />
-              <Field
-                label="Solde initial"
-                value={initialBalance}
-                onChange={setInitialBalance}
-                type="number"
-                placeholder="0"
-              />
-            </div>
             {error && <ErrorBox message={error} />}
-            <ModalActions loading={loading || pin.length !== 4} onClose={onClose} submitLabel="Créer l'agent" />
+            <ModalActions loading={loading || pin.length !== 4} onClose={onClose} submitLabel="Créer l'administrateur" />
           </form>
         ) : (
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              onUpdate({
-                monthlyTarget: editTarget,
-                monthlyAchieved: editAchieved,
-                balance: editBalance,
-                pin: editPin,
-              });
+              onUpdate({ pin: newPin });
             }}
             className="space-y-4"
           >
-            {agent && (
-              <p className="text-sm text-gray-400">{formatPhone(agent.phone)}</p>
-            )}
-            <Field label="Objectif mensuel" value={editTarget} onChange={setEditTarget} type="number" />
-            <Field label="Ventes réalisées" value={editAchieved} onChange={setEditAchieved} type="number" />
-            <Field label="Solde" value={editBalance} onChange={setEditBalance} type="number" />
-            <div className="border-t border-gray-100 pt-4">
+            {admin && <p className="text-sm text-gray-400">{formatPhone(admin.phone)}</p>}
+            <div>
               <label className="mb-2 block text-center text-sm text-gray-500">
-                Nouveau code PIN (laisser vide pour ne pas changer)
+                Nouveau code PIN (4 chiffres)
               </label>
-              <PinInput value={editPin} onChange={setEditPin} disabled={loading} />
+              <PinInput value={newPin} onChange={setNewPin} disabled={loading} />
             </div>
             {error && <ErrorBox message={error} />}
-            <ModalActions loading={loading} onClose={onClose} submitLabel="Enregistrer" />
+            <ModalActions
+              loading={loading || newPin.length !== 4}
+              onClose={onClose}
+              submitLabel="Enregistrer le nouveau PIN"
+            />
           </form>
         )}
       </div>
@@ -185,14 +136,12 @@ function Field({
   label,
   value,
   onChange,
-  type = "text",
   placeholder,
   required,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
-  type?: string;
   placeholder?: string;
   required?: boolean;
 }) {
@@ -200,7 +149,7 @@ function Field({
     <div>
       <label className="mb-1 block text-sm text-gray-500">{label}</label>
       <input
-        type={type}
+        type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}

@@ -7,6 +7,7 @@ import {
   Users,
   ArrowDownToLine,
   Settings,
+  ShieldCheck,
   LogOut,
   Menu,
   X,
@@ -22,6 +23,7 @@ const navItems = [
   { href: "/admin", icon: LayoutDashboard, label: "Tableau de bord" },
   { href: "/admin/agents", icon: Users, label: "Agents" },
   { href: "/admin/withdrawals", icon: ArrowDownToLine, label: "Retraits" },
+  { href: "/admin/admins", icon: ShieldCheck, label: "Administrateurs" },
   { href: "/admin/settings", icon: Settings, label: "Paramètres" },
 ];
 

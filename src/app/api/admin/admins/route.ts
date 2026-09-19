@@ -2,13 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession, hashPin } from "@/lib/auth";
 import {
   createUser,
-  getAllAgents,
+  getAllAdmins,
   getUserByPhone,
   getUserById,
   updateUser,
   deleteUser,
-  setWeeklyPerformance,
-  addActivity,
 } from "@/lib/db";
 import { generateId } from "@/lib/utils";
 
@@ -18,8 +16,8 @@ export async function GET() {
     return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
   }
 
-  const agents = (await getAllAgents()).map(({ pinHash: _, ...agent }) => agent);
-  return NextResponse.json({ agents });
+  const admins = (await getAllAdmins()).map(({ pinHash: _, ...admin }) => admin);
+  return NextResponse.json({ admins });
 }
 
 export async function POST(request: NextRequest) {
@@ -30,7 +28,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { name, phone, pin, monthlyTarget, initialBalance } = body;
+    const { name, phone, pin } = body;
 
     const cleanPhone = String(phone).replace(/\D/g, "");
     const cleanPin = String(pin).replace(/\D/g, "");
@@ -50,41 +48,19 @@ export async function POST(request: NextRequest) {
     }
 
     const pinHash = await hashPin(cleanPin);
-    const userId = generateId("agent");
+    const userId = generateId("admin");
 
     const user = await createUser({
       id: userId,
       phone: cleanPhone,
       pinHash,
       name: String(name).trim(),
-      role: "agent",
-      balance: Number(initialBalance) || 0,
-      monthlyTarget: Number(monthlyTarget) || 0,
+      role: "admin",
+      balance: 0,
+      monthlyTarget: 0,
       monthlyAchieved: 0,
       createdAt: new Date().toISOString(),
     });
-
-    const defaultDays = [
-      { day: "L", amount: 0 },
-      { day: "M", amount: 0 },
-      { day: "M", amount: 0 },
-      { day: "J", amount: 0 },
-      { day: "V", amount: 0 },
-      { day: "S", amount: 0 },
-      { day: "D", amount: 0 },
-    ];
-    await setWeeklyPerformance(userId, defaultDays);
-
-    if (user.balance > 0) {
-      await addActivity({
-        id: generateId("act"),
-        userId,
-        type: "bonus",
-        label: "Solde initial",
-        amount: user.balance,
-        createdAt: new Date().toISOString(),
-      });
-    }
 
     const { pinHash: _, ...publicUser } = user;
     return NextResponse.json({ user: publicUser }, { status: 201 });
@@ -102,16 +78,36 @@ export async function PATCH(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { userId, monthlyTarget, monthlyAchieved, balance, weeklyData, pin } = body;
+    const { userId, name, phone, pin } = body;
 
     if (!userId) {
-      return NextResponse.json({ error: "ID utilisateur requis" }, { status: 400 });
+      return NextResponse.json({ error: "ID administrateur requis" }, { status: 400 });
     }
 
-    const updates: { monthlyTarget?: number; monthlyAchieved?: number; balance?: number; pinHash?: string } = {};
-    if (monthlyTarget !== undefined) updates.monthlyTarget = Number(monthlyTarget);
-    if (monthlyAchieved !== undefined) updates.monthlyAchieved = Number(monthlyAchieved);
-    if (balance !== undefined) updates.balance = Number(balance);
+    const target = await getUserById(userId);
+    if (!target || target.role !== "admin") {
+      return NextResponse.json({ error: "Administrateur introuvable" }, { status: 404 });
+    }
+
+    const updates: { name?: string; phone?: string; pinHash?: string } = {};
+
+    if (name !== undefined && String(name).trim()) {
+      updates.name = String(name).trim();
+    }
+
+    if (phone !== undefined) {
+      const cleanPhone = String(phone).replace(/\D/g, "");
+      if (cleanPhone && cleanPhone !== target.phone) {
+        const existing = await getUserByPhone(cleanPhone);
+        if (existing && existing.id !== userId) {
+          return NextResponse.json(
+            { error: "Ce numéro est déjà utilisé" },
+            { status: 409 }
+          );
+        }
+        updates.phone = cleanPhone;
+      }
+    }
 
     if (pin) {
       const cleanPin = String(pin).replace(/\D/g, "");
@@ -125,11 +121,6 @@ export async function PATCH(request: NextRequest) {
     }
 
     const user = await updateUser(userId, updates);
-
-    if (weeklyData && Array.isArray(weeklyData)) {
-      await setWeeklyPerformance(userId, weeklyData);
-    }
-
     const { pinHash: _, ...publicUser } = user;
     return NextResponse.json({ user: publicUser });
   } catch (error) {
@@ -149,12 +140,27 @@ export async function DELETE(request: NextRequest) {
     const userId = searchParams.get("userId");
 
     if (!userId) {
-      return NextResponse.json({ error: "ID agent requis" }, { status: 400 });
+      return NextResponse.json({ error: "ID administrateur requis" }, { status: 400 });
+    }
+
+    if (userId === session.userId) {
+      return NextResponse.json(
+        { error: "Vous ne pouvez pas supprimer votre propre compte" },
+        { status: 400 }
+      );
     }
 
     const target = await getUserById(userId);
-    if (!target || target.role !== "agent") {
-      return NextResponse.json({ error: "Agent introuvable" }, { status: 404 });
+    if (!target || target.role !== "admin") {
+      return NextResponse.json({ error: "Administrateur introuvable" }, { status: 404 });
+    }
+
+    const admins = await getAllAdmins();
+    if (admins.length <= 1) {
+      return NextResponse.json(
+        { error: "Impossible de supprimer le dernier administrateur" },
+        { status: 400 }
+      );
     }
 
     await deleteUser(userId);

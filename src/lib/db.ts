@@ -77,6 +77,23 @@ export async function getAllAgents(): Promise<User[]> {
   return rows.map(mapUser);
 }
 
+export async function getAllAdmins(): Promise<User[]> {
+  const pool = getPool();
+  const [rows] = await pool.execute<UserRow[]>(
+    "SELECT * FROM users WHERE role = 'admin' ORDER BY created_at ASC"
+  );
+  return rows.map(mapUser);
+}
+
+export async function deleteUser(id: string): Promise<void> {
+  const pool = getPool();
+  const [result] = await pool.execute<ResultSetHeader>(
+    "DELETE FROM users WHERE id = ?",
+    [id]
+  );
+  if (result.affectedRows === 0) throw new Error("Utilisateur introuvable");
+}
+
 export async function createUser(user: User): Promise<User> {
   const pool = getPool();
   const existing = await getUserByPhone(user.phone);

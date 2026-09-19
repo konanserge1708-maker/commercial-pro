@@ -2,82 +2,75 @@
 
 import { useEffect, useState } from "react";
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
-import AgentsTable, { type AgentRow } from "@/components/admin/AgentsTable";
-import AgentModal from "@/components/admin/AgentModal";
-import AgentProspectsModal from "@/components/admin/AgentProspectsModal";
+import AdminsTable, { type AdminRow } from "@/components/admin/AdminsTable";
+import AdminModal from "@/components/admin/AdminModal";
 import { UserPlus, CheckCircle } from "lucide-react";
 
-export default function AdminAgentsPage() {
-  const [agents, setAgents] = useState<AgentRow[]>([]);
+export default function AdminAdminsPage() {
+  const [admins, setAdmins] = useState<AdminRow[]>([]);
+  const [currentUserId, setCurrentUserId] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
-  const [editingAgent, setEditingAgent] = useState<AgentRow | null>(null);
-  const [prospectsAgent, setProspectsAgent] = useState<AgentRow | null>(null);
+  const [editingAdmin, setEditingAdmin] = useState<AdminRow | null>(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
 
-  const fetchAgents = () => {
-    fetch("/api/admin/agents")
+  const fetchAdmins = () => {
+    fetch("/api/admin/admins")
       .then((r) => r.json())
       .then((data) => {
-        if (data.agents) setAgents(data.agents);
+        if (data.admins) setAdmins(data.admins);
       });
   };
 
   useEffect(() => {
-    fetchAgents();
+    fetchAdmins();
+    fetch("/api/auth/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.user?.id) setCurrentUserId(data.user.id);
+      })
+      .catch(() => {});
   }, []);
 
   const openCreate = () => {
     setModalMode("create");
-    setEditingAgent(null);
+    setEditingAdmin(null);
     setError("");
     setModalOpen(true);
   };
 
-  const openEdit = (agent: AgentRow) => {
+  const openEdit = (admin: AdminRow) => {
     setModalMode("edit");
-    setEditingAgent(agent);
+    setEditingAdmin(admin);
     setError("");
     setModalOpen(true);
   };
 
   const closeModal = () => {
     setModalOpen(false);
-    setEditingAgent(null);
+    setEditingAdmin(null);
     setError("");
   };
 
-  const handleCreate = async (data: {
-    name: string;
-    phone: string;
-    pin: string;
-    monthlyTarget: string;
-    initialBalance: string;
-  }) => {
+  const handleCreate = async (data: { name: string; phone: string; pin: string }) => {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/admin/agents", {
+      const res = await fetch("/api/admin/admins", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: data.name,
-          phone: data.phone,
-          pin: data.pin,
-          monthlyTarget: Number(data.monthlyTarget) || 0,
-          initialBalance: Number(data.initialBalance) || 0,
-        }),
+        body: JSON.stringify(data),
       });
       const result = await res.json();
       if (!res.ok) {
         setError(result.error || "Erreur lors de la création");
         return;
       }
-      setSuccess(`Compte créé pour ${result.user.name}`);
+      setSuccess(`Compte administrateur créé pour ${result.user.name}`);
       closeModal();
-      fetchAgents();
+      fetchAdmins();
       setTimeout(() => setSuccess(""), 3000);
     } catch {
       setError("Erreur serveur");
@@ -86,35 +79,24 @@ export default function AdminAgentsPage() {
     }
   };
 
-  const handleUpdate = async (data: {
-    monthlyTarget: string;
-    monthlyAchieved: string;
-    balance: string;
-    pin: string;
-  }) => {
-    if (!editingAgent) return;
+  const handleUpdate = async (data: { pin: string }) => {
+    if (!editingAdmin) return;
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/admin/agents", {
+      const res = await fetch("/api/admin/admins", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: editingAgent.id,
-          monthlyTarget: Number(data.monthlyTarget),
-          monthlyAchieved: Number(data.monthlyAchieved),
-          balance: Number(data.balance),
-          ...(data.pin ? { pin: data.pin } : {}),
-        }),
+        body: JSON.stringify({ userId: editingAdmin.id, pin: data.pin }),
       });
       const result = await res.json();
       if (!res.ok) {
         setError(result.error || "Erreur lors de la mise à jour");
         return;
       }
-      setSuccess(`Compte de ${result.user.name} mis à jour`);
+      setSuccess(`PIN de ${result.user.name} mis à jour`);
       closeModal();
-      fetchAgents();
+      fetchAdmins();
       setTimeout(() => setSuccess(""), 3000);
     } catch {
       setError("Erreur serveur");
@@ -123,16 +105,16 @@ export default function AdminAgentsPage() {
     }
   };
 
-  const handleDelete = async (agent: AgentRow) => {
+  const handleDelete = async (admin: AdminRow) => {
     if (
       !confirm(
-        `Supprimer définitivement le compte de ${agent.name} ? Cette action est irréversible.`
+        `Supprimer définitivement le compte administrateur de ${admin.name} ?`
       )
     )
       return;
 
     try {
-      const res = await fetch(`/api/admin/agents?userId=${agent.id}`, {
+      const res = await fetch(`/api/admin/admins?userId=${admin.id}`, {
         method: "DELETE",
       });
       const result = await res.json();
@@ -140,8 +122,8 @@ export default function AdminAgentsPage() {
         alert(result.error || "Erreur lors de la suppression");
         return;
       }
-      setSuccess(`Compte de ${agent.name} supprimé`);
-      fetchAgents();
+      setSuccess(`Compte de ${admin.name} supprimé`);
+      fetchAdmins();
       setTimeout(() => setSuccess(""), 3000);
     } catch {
       alert("Erreur serveur");
@@ -151,15 +133,15 @@ export default function AdminAgentsPage() {
   return (
     <>
       <AdminPageHeader
-        title="Agents"
-        subtitle={`${agents.length} agent(s) commercial(aux)`}
+        title="Administrateurs"
+        subtitle={`${admins.length} compte(s) administrateur`}
         actions={
           <button
             onClick={openCreate}
             className="flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary/30 transition-all hover:bg-primary-dark"
           >
             <UserPlus size={18} />
-            Ajouter un agent
+            Ajouter un administrateur
           </button>
         }
       />
@@ -171,29 +153,22 @@ export default function AdminAgentsPage() {
         </div>
       )}
 
-      <AgentsTable
-        agents={agents}
+      <AdminsTable
+        admins={admins}
+        currentUserId={currentUserId}
         onEdit={openEdit}
-        onViewProspects={setProspectsAgent}
         onDelete={handleDelete}
       />
 
-      <AgentModal
+      <AdminModal
         open={modalOpen}
         mode={modalMode}
-        agent={editingAgent}
+        admin={editingAdmin}
         loading={loading}
         error={error}
         onClose={closeModal}
         onCreate={handleCreate}
         onUpdate={handleUpdate}
-      />
-
-      <AgentProspectsModal
-        open={!!prospectsAgent}
-        agentId={prospectsAgent?.id ?? null}
-        agentName={prospectsAgent?.name}
-        onClose={() => setProspectsAgent(null)}
       />
     </>
   );

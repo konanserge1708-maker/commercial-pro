@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { formatCurrency, formatPhone, getProgressPercent } from "@/lib/utils";
-import { Search, ChevronLeft, ChevronRight, Pencil, Users } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, Pencil, Users, Trash2 } from "lucide-react";
 
 export interface AgentRow {
   id: string;
@@ -18,6 +18,7 @@ interface AgentsTableProps {
   agents: AgentRow[];
   onEdit: (agent: AgentRow) => void;
   onViewProspects: (agent: AgentRow) => void;
+  onDelete: (agent: AgentRow) => void;
   pageSize?: number;
 }
 
@@ -32,6 +33,7 @@ export default function AgentsTable({
   agents,
   onEdit,
   onViewProspects,
+  onDelete,
   pageSize = 8,
 }: AgentsTableProps) {
   const [search, setSearch] = useState("");
@@ -161,6 +163,13 @@ export default function AgentsTable({
                         title="Modifier"
                       >
                         <Pencil size={16} />
+                      </button>
+                      <button
+                        onClick={() => onDelete(agent)}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                        title="Supprimer"
+                      >
+                        <Trash2 size={16} />
                       </button>
                     </div>
                   </td>
