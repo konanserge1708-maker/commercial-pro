@@ -186,10 +186,6 @@ export default function LoginPage() {
             </button>
           </form>
         )}
-
-        <p className="mt-6 text-center text-xs text-gray-400">
-          Admin : 0000000000 / PIN 0000
-        </p>
       </div>
     </div>
   );

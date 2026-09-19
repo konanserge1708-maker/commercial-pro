@@ -8,6 +8,7 @@ import Link from "next/link";
 import { TrendingUp, ArrowDownToLine, Tag, Users } from "lucide-react";
 import { getProspectRewardAmount } from "@/lib/db";
 import LogoutButton from "@/components/LogoutButton";
+import ReferralLinkActions from "@/components/ReferralLinkActions";
 
 export default async function DashboardPage() {
   const session = await getSession();
@@ -69,6 +70,7 @@ export default async function DashboardPage() {
           <p className="mt-3 text-xs text-gray-400">
             +{formatCurrency(rewardPerProspect)} crédité par prospect qualifié via WhatsApp
           </p>
+          <ReferralLinkActions promoCode={user.promoCode} />
         </Card>
       )}
 
